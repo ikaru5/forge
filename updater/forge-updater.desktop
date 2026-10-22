@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Forge updater
+Exec=sh -c "exec ~/.local/bin/forge-updater"
+NoDisplay=true

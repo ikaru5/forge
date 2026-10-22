@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Installs the latest Forge release from GitHub if it is newer than the
+# installed one. The new version becomes active after the next login.
+set -euo pipefail
+
+repo=ikaru5/forge
+uuid=forge@jmmaranan.com
+ext="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$uuid"
+
+# Right after login Wi-Fi may still be connecting
+curl=(curl -fsSL --retry 12 --retry-delay 10 --retry-all-errors)
+
+tag=$("${curl[@]}" "https://api.github.com/repos/$repo/releases/latest" | jq -r .tag_name)
+[[ $tag =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || { echo "unexpected tag: $tag" >&2; exit 1; }
+latest=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#${BASH_REMATCH[3]}))
+installed=$(jq -r '.version // 0' "$ext/metadata.json" 2>/dev/null || echo 0)
+((latest > installed)) || { echo "Forge up to date ($tag)"; exit 0; }
+
+zip=$(mktemp --suffix=.zip)
+trap 'rm -f "$zip"' EXIT
+"${curl[@]}" -o "$zip" "https://github.com/$repo/releases/download/$tag/$uuid.zip"
+gnome-extensions install --force "$zip"
+echo "Forge $tag installed (version $latest, was $installed)"
+notify-send --app-name=Forge "Forge $tag installed" "Active after the next login." || true
